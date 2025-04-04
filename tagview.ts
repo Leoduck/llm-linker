@@ -19,9 +19,10 @@ export class TagView extends ItemView {
   async onOpen() {
     const container = this.containerEl.children[1];
     container.empty();
-    container.createEl('h4', { text: 'Tagging view' });
+    container.createEl('h4', { text: 'Tagging suggestions' });
 
     // Get the active file
+    //TODO: clean this up to work with the frontmatter
     const activeFile = this.app.workspace.getActiveFile();
     if (activeFile) {
         // Read the content of the active file
@@ -29,7 +30,6 @@ export class TagView extends ItemView {
 
         // Create a new element to display the content
         const contentEl = container.createEl('div', { cls: 'note-content' });
-        console.log('File content:', fileContent);
         const tagbutton = contentEl.createEl('button', { text: 'welcome' });
         tagbutton.addEventListener('click', () => {
           const tag = `#${tagbutton.textContent}`; // Add a hashtag to the tag
@@ -77,8 +77,6 @@ export class TagView extends ItemView {
 
         // Create a new element to display the content
         const contentEl = container.createEl('div', { cls: 'note-content' });
-        console.log('File content:', fileContent);
-        contentEl.textContent = fileContent;
 
         // Button to ask the LLM for improvements
         const llmButton = contentEl.createEl('button', { text: 'Ask LLM for Improvements' });
@@ -88,18 +86,29 @@ export class TagView extends ItemView {
             url: 'http://localhost:11434/api/generate',
             body: JSON.stringify({
               prompt: taggingPrompt + fileContent,
-              model: 'deepseek-r1:latest',
+              model: 'llama3.2',
               stream: false,
             })
           }).then((response) => {
-            console.log('LLM response:', response.text); 
+            //Managing the response from the LLM
+            //console.log('LLM response:', response.text); 
             const data = JSON.parse(response.text)
-            console.log('Parsed LLM response:', data);
+            const suggestions: string[] = JSON.parse(data.response)
+            console.log('Parsed LLM response:', data.response);
+            //console.log('Parsed LLM list:', suggestions);
             // Display the LLM's suggestions in the content element
+
+
             const suggestionsEl = contentEl.createEl('div', { cls: 'llm-suggestions' });
             suggestionsEl.createEl('h4', { text: 'LLM Suggestions:' });
-            suggestionsEl.createEl('p', { text: data.response }); // Assuming the response has a 'suggestions' field
-            
+            const suggestionsList = suggestionsEl.createEl('div', { cls: 'multi-select-container'});
+
+            suggestions.forEach((suggestion: string) => {
+              const pill = suggestionsList.createEl('div', {cls: 'multi-select-pill' });
+              pill.setAttribute('tabindex', '0');
+              const pillContent = pill.createEl('div', {cls: 'multi-select-pill-content' });
+              pillContent.createEl('span', { text: suggestion});
+            });
           }).catch((error) => {
             console.error('Error:', error);
           });
@@ -108,6 +117,7 @@ export class TagView extends ItemView {
         // Handle the case where no file is open
         container.createEl('p', { text: 'No active note is open.' });
     }
+    
   }
 
 
