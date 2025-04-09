@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, requestUrl, parseFrontMatterTags } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, requestUrl, parseFrontMatterTags, Vault, getAllTags, TFile} from 'obsidian';
 import { taggingPrompt } from 'prompts/tagging';
 
 export const VIEW_TYPE_TAGGING = 'tag-view';
@@ -43,37 +43,53 @@ export class TagView extends ItemView {
     this.app.workspace.on('active-leaf-change', this.onFileChangeHandler);
   }
 
-  async renderView(container: HTMLElement) {
+  async renderView(container: Element) {
+    const files: TFile[] = this.app.vault.getMarkdownFiles();
+    const usedTags: Set<string> = new Set<string>();
+    files.forEach((file: TFile) => {
+      const tags: string[] = parseFrontMatterTags(this.app.metadataCache.getFileCache(file)?.frontmatter) || [];
+      tags.forEach((tag: string) => {
+        usedTags.add(tag);
+      });
+    });
+
     if (this.activeFile) {
-      // Get the tags from the frontmatter
-      const existingTags: string[] = parseFrontMatterTags(
-        this.app.metadataCache.getFileCache(this.activeFile)?.frontmatter
-      ) || [];
 
       // Read the content of the active file
       const fileContent = await this.app.vault.read(this.activeFile);
 
       // Create a new element to display the content
       const contentEl = container.createEl('div', { cls: 'note-content' });
-
       // Button to ask the LLM for improvements
       const llmButton = contentEl.createEl('button', { text: 'Ask LLM for tags' });
       llmButton.addEventListener('click', () => {
+        // Create a loading spinner
+        const spinner = contentEl.createEl('div', { cls: 'loading-spinner' });
+        spinner.textContent = 'Loading...'; // Optional: Add text to indicate loading
+
+        // Get the tags from the frontmatter
+        const existingTags: string[] = parseFrontMatterTags(
+          this.app.metadataCache.getFileCache(this.activeFile)?.frontmatter
+        ) || [];
+
         requestUrl({
           method: 'POST',
           url: 'http://localhost:11434/api/generate',
           body: JSON.stringify({
-            prompt: taggingPrompt + existingTags + '\n' + fileContent,
+            prompt: taggingPrompt(usedTags, existingTags, fileContent),
             model: 'llama3.2',
             stream: false,
           }),
         })
           .then((response) => {
-            // Managing the response from the LLM
+            // Remove the spinner once the response is received
+            spinner.remove();
+
             const data = JSON.parse(response.text);
-            console.log('LLM response:', data.response);
-            const suggestions: string[] = JSON.parse(data.response);
-            console.log('Parsed LLM response:', data.response);
+            const unfilSuggestions: string[] = JSON.parse(data.response);
+            const suggestions = unfilSuggestions.filter((suggestion: string) => !existingTags.includes(suggestion)); // Filter out existing tags
+
+            console.log('LLM suggestions:', suggestions);
 
             // Generate a list of suggestions from the LLM response
             if (suggestions.length < 1) {
@@ -83,6 +99,11 @@ export class TagView extends ItemView {
               const suggestionsEl = contentEl.createEl('div', { cls: 'llm-suggestions' });
               suggestionsEl.createEl('h4', { text: 'LLM Suggestions:' });
               const suggestionsList = suggestionsEl.createEl('div', { cls: 'multi-select-container' });
+              const removeButton = suggestionsList.createEl('button', { cls: 'remove-suggestions', text: '✖'});
+              removeButton.addEventListener('click', () => {
+                suggestionsEl.remove(); // Remove the suggestionsEl element
+              });
+
               suggestions.forEach((suggestion: string) => {
                 const pill = suggestionsList.createEl('div', { cls: 'multi-select-pill' });
                 // Adds the suggestion to the frontmatter tags when clicked
@@ -94,6 +115,7 @@ export class TagView extends ItemView {
                       // Check if the suggestion is already in the tags array
                       if (!frontmatter.tags.includes(suggestion)) {
                         frontmatter.tags.push(suggestion);
+                        existingTags.push(suggestion); // Add the suggestion to the existingTags array
                       }
                     }
                   });
@@ -110,6 +132,8 @@ export class TagView extends ItemView {
             }
           })
           .catch((error) => {
+            // Remove the spinner if an error occurs
+            spinner.remove();
             console.error('Error:', error);
           });
       });
