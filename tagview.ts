@@ -3,9 +3,14 @@ import { taggingPrompt } from 'prompts/tagging';
 
 export const VIEW_TYPE_TAGGING = 'tag-view';
 
+interface TagSuggestions {
+  vaultTags: string[];
+  newTags: string[];
+}
+
 export class TagView extends ItemView {
-  private activeFile: any; // Track the currently active file
-  private onFileChangeHandler: () => void; // Store the event handler for cleanup
+  private activeFile: any;
+  private onFileChangeHandler: () => void;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -24,19 +29,18 @@ export class TagView extends ItemView {
     container.empty();
     container.createEl('h4', { text: 'Tagging suggestions' });
 
-    // Initialize the active file
     this.activeFile = this.app.workspace.getActiveFile();
-
-    // Render the view for the current active file
     this.renderView(container);
+    this.setupFileChangeListener(container);
+  }
 
-    // Listen for active file changes
+  private setupFileChangeListener(container: Element) {
     this.onFileChangeHandler = () => {
       const newActiveFile = this.app.workspace.getActiveFile();
       if (newActiveFile !== this.activeFile) {
         this.activeFile = newActiveFile;
-        container.empty(); // Clear the container
-        this.renderView(container); // Re-render the view
+        container.empty();
+        this.renderView(container);
       }
     };
 
@@ -44,107 +48,152 @@ export class TagView extends ItemView {
   }
 
   async renderView(container: Element) {
+    if (!this.activeFile) {
+      container.createEl('p', { text: 'No active note is open.' });
+      return;
+    }
+
+    const usedTags = this.getAllVaultTags();
+    const contentEl = container.createEl('div', { cls: 'note-content' });
+    const llmButton = this.createLLMButton(contentEl, usedTags);
+  }
+
+  private getAllVaultTags(): Set<string> {
     const files: TFile[] = this.app.vault.getMarkdownFiles();
     const usedTags: Set<string> = new Set<string>();
     files.forEach((file: TFile) => {
       const tags: string[] = parseFrontMatterTags(this.app.metadataCache.getFileCache(file)?.frontmatter) || [];
-      tags.forEach((tag: string) => {
-        usedTags.add(tag);
-      });
+      tags.forEach((tag: string) => usedTags.add(tag));
+    });
+    return usedTags;
+  }
+
+  private createLLMButton(container: Element, usedTags: Set<string>): HTMLElement {
+    const llmButton = container.createEl('button', { cls: 'generate-tags-button', text: 'Ask LLM for tags' });
+    llmButton.addEventListener('click', () => this.handleLLMRequest(container, usedTags));
+    return llmButton;
+  }
+
+  private async handleLLMRequest(container: Element, usedTags: Set<string>) {
+    const spinner = this.createLoadingSpinner(container);
+    const existingTags = this.getExistingTags();
+    const fileContent = await this.app.vault.read(this.activeFile);
+
+    try {
+      const suggestions = await this.requestTagSuggestions(usedTags, existingTags, fileContent);
+      spinner.remove();
+      this.displayTagSuggestions(container, suggestions, existingTags);
+    } catch (error) {
+      spinner.remove();
+      console.error('Error:', error);
+      new Notice('Failed to get tag suggestions');
+    }
+  }
+
+  private createLoadingSpinner(container: Element): HTMLElement {
+    const spinner = container.createEl('div', { cls: 'loading-spinner' });
+    spinner.textContent = 'Loading...';
+    return spinner;
+  }
+
+  private getExistingTags(): string[] {
+    return parseFrontMatterTags(
+      this.app.metadataCache.getFileCache(this.activeFile)?.frontmatter
+    ) || [];
+  }
+
+  private async requestTagSuggestions(usedTags: Set<string>, existingTags: string[], fileContent: string): Promise<TagSuggestions> {
+    // For development/testing, use mock data instead of actual LLM response
+    if (false) {
+      return {
+        vaultTags: ['research', 'programming', 'obsidian', 'plugins'],
+        newTags: ['llm-integration', 'api-development', 'typescript', 'documentation']
+      };
+    }
+    const response = await requestUrl({
+      method: 'POST',
+      url: 'http://localhost:11434/api/generate',
+      body: JSON.stringify({
+        prompt: taggingPrompt(usedTags, existingTags, fileContent),
+        model: 'deepseek-r1',
+        stream: false,
+      }),
     });
 
-    if (this.activeFile) {
+    const data = JSON.parse(response.text);
+    // For development/testing, use mock data instead of actual LLM response
+    
+    const responseText = data.response;
+    const jsonMatch = responseText.match(/\{([\s\S]*?)\}/);
+    
+    if (!jsonMatch) {
+      throw new Error('Could not parse suggestions from LLM response');
+    }
 
-      // Read the content of the active file
-      const fileContent = await this.app.vault.read(this.activeFile);
+    return JSON.parse(jsonMatch[0]);
+  }
 
-      // Create a new element to display the content
-      const contentEl = container.createEl('div', { cls: 'note-content' });
-      // Button to ask the LLM for improvements
-      const llmButton = contentEl.createEl('button', { text: 'Ask LLM for tags' });
-      llmButton.addEventListener('click', () => {
-        // Create a loading spinner
-        const spinner = contentEl.createEl('div', { cls: 'loading-spinner' });
-        spinner.textContent = 'Loading...'; // Optional: Add text to indicate loading
+  private displayTagSuggestions(container: Element, suggestions: TagSuggestions, existingTags: string[]) {
+    if (suggestions.vaultTags.length < 1 && suggestions.newTags.length < 1) {
+      new Notice('No new suggestions found.');
+      return;
+    }
 
-        // Get the tags from the frontmatter
-        const existingTags: string[] = parseFrontMatterTags(
-          this.app.metadataCache.getFileCache(this.activeFile)?.frontmatter
-        ) || [];
+    const suggestionsEl = container.createEl('div', { cls: 'llm-suggestions' });
+    
+    if (suggestions.vaultTags.length > 0) {
+      this.createTagSection(suggestionsEl, suggestions.vaultTags, 'Tags from other notes', 'vault-tag', existingTags);
+    }
 
-        requestUrl({
-          method: 'POST',
-          url: 'http://localhost:11434/api/generate',
-          body: JSON.stringify({
-            prompt: taggingPrompt(usedTags, existingTags, fileContent),
-            model: 'llama3.2',
-            stream: false,
-          }),
-        })
-          .then((response) => {
-            // Remove the spinner once the response is received
-            spinner.remove();
+    if (suggestions.newTags.length > 0) {
+      this.createTagSection(suggestionsEl, suggestions.newTags, 'New potential tags', 'new-tag', existingTags);
+    }
+  }
 
-            const data = JSON.parse(response.text);
-            const unfilSuggestions: string[] = JSON.parse(data.response);
-            const suggestions = unfilSuggestions.filter((suggestion: string) => !existingTags.includes(suggestion)); // Filter out existing tags
+  private createTagSection(container: Element, tags: string[], title: string, tagClass: string, existingTags: string[]) {
+    const section = container.createEl('div', { cls: `tag-suggestion-section ${tagClass}` });
+    const sectionHeader = section.createEl('div', { cls: 'tag-suggestion-section-header' });
+    sectionHeader.createEl('div', { cls: 'tag-suggestion-section-title', text: title });
+    const removeButton = this.createRemoveButton(sectionHeader, section);
+    
+    const tagsList = section.createEl('div', { cls: 'multi-select-container' });
+    
+    tags.forEach(tag => this.createTagPill(tagsList, tag, existingTags));
+  }
 
-            console.log('LLM suggestions:', suggestions);
+  private createRemoveButton(container: Element, sectionToRemove: Element): HTMLElement {
+    const removeButton = container.createEl('a', { cls: 'remove-suggestions', text: 'x'});
+    removeButton.addEventListener('click', () => sectionToRemove.remove());
+    return removeButton;
+  }
 
-            // Generate a list of suggestions from the LLM response
-            if (suggestions.length < 1) {
-              new Notice('No new suggestions found.');
-            } else {
-              // Display the LLM's suggestions in the content element
-              const suggestionsEl = contentEl.createEl('div', { cls: 'llm-suggestions' });
-              suggestionsEl.createEl('h4', { text: 'LLM Suggestions:' });
-              const suggestionsList = suggestionsEl.createEl('div', { cls: 'multi-select-container' });
-              const removeButton = suggestionsList.createEl('button', { cls: 'remove-suggestions', text: '✖'});
-              removeButton.addEventListener('click', () => {
-                suggestionsEl.remove(); // Remove the suggestionsEl element
-              });
+  private createTagPill(container: Element, tag: string, existingTags: string[]) {
+    const pill = container.createEl('div', { cls: `multi-select-pill` });
+    pill.setAttribute('tabindex', '0');
+    
+    const pillContent = pill.createEl('div', { cls: 'multi-select-pill-content' });
+    pillContent.createEl('span', { text: tag });
 
-              suggestions.forEach((suggestion: string) => {
-                const pill = suggestionsList.createEl('div', { cls: 'multi-select-pill' });
-                // Adds the suggestion to the frontmatter tags when clicked
-                pill.addEventListener('click', () => {
-                  this.app.fileManager.processFrontMatter(this.activeFile, (frontmatter) => {
-                    if (!frontmatter.tags) {
-                      frontmatter.tags = [suggestion];
-                    } else {
-                      // Check if the suggestion is already in the tags array
-                      if (!frontmatter.tags.includes(suggestion)) {
-                        frontmatter.tags.push(suggestion);
-                        existingTags.push(suggestion); // Add the suggestion to the existingTags array
-                      }
-                    }
-                  });
-                  pill.remove();
+    pill.addEventListener('click', () => this.handleTagClick(pill, tag, container, existingTags));
+  }
 
-                  if (suggestionsList.children.length === 0) {
-                    suggestionsEl.remove(); // Remove the suggestionsList element
-                  }
-                });
-                pill.setAttribute('tabindex', '0');
-                const pillContent = pill.createEl('div', { cls: 'multi-select-pill-content' });
-                pillContent.createEl('span', { text: suggestion });
-              });
-            }
-          })
-          .catch((error) => {
-            // Remove the spinner if an error occurs
-            spinner.remove();
-            console.error('Error:', error);
-          });
-      });
-    } else {
-      // Handle the case where no file is open
-      container.createEl('p', { text: 'No active note is open.' });
+  private handleTagClick(pill: Element, tag: string, container: Element, existingTags: string[]) {
+    this.app.fileManager.processFrontMatter(this.activeFile, (frontmatter) => {
+      if (!frontmatter.tags) {
+        frontmatter.tags = [tag];
+      } else if (!frontmatter.tags.includes(tag)) {
+        frontmatter.tags.push(tag);
+        existingTags.push(tag);
+      }
+    });
+
+    pill.remove();
+    if (container.children.length === 0) {
+      container.parentElement?.remove();
     }
   }
 
   async onClose() {
-    // Cleanup the event listener when the view is closed
     if (this.onFileChangeHandler) {
       this.app.workspace.off('active-leaf-change', this.onFileChangeHandler);
     }

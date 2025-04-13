@@ -7,6 +7,13 @@ If your plugin does not need CSS, delete this file.
 
 */
 
+.generate-tags-button {
+  display: block;
+  margin: auto;
+  margin-bottom: var(--size-4-6);
+  
+}
+
 .loading-spinner {
   display: flex;
   justify-content: center;
@@ -16,16 +23,61 @@ If your plugin does not need CSS, delete this file.
   color: #888;
 }
 
+.tag-suggestion-section {
+  display: inline-flex;
+  vertical-align: top;
+  flex-wrap: wrap;
+  min-height: var(--input-height);
+  width: 100%;
+  background: var(--background-modifier-form-field);
+  border: var(--input-border-width) solid var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: var(--font-ui-medium);
+  border-radius: var(--input-radius);
+  outline: none;
+  padding: var(--size-4-1);
+  gap: var(--size-2-3);
+  margin-bottom: var(--size-4-5);
+}
+
+.tag-suggestion-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+} 
+
+.tag-suggestion-section-title {
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-weight-medium);
+  padding-left: var(--size-4-3);
+}
+
 .remove-suggestions {
-  top: 10px;
-  right: 10px;
+  text-decoration: none;
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 16px;
   color: #888;
   cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
 }
 
 .remove-suggestions:hover {
+  text-decoration: none;
   color: #ff4d4d;
+  background-color: rgba(255, 77, 77, 0.1);
+}
+
+.vault-tag {
+  background-color: #545531;
+}
+
+ .new-tag {
+  background-color: #314255;
 }
