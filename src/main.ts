@@ -1,5 +1,6 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
 import { TagView, VIEW_TYPE_TAGGING } from './tagview';
+import { highlightExtension } from './highlight';
 // Remember to rename these classes and interfaces!
 
 interface LLMLinkerPluginSettings {
@@ -17,6 +18,8 @@ export default class LLMLinkerPlugin extends Plugin {
 		// Load plugin settings
 		await this.loadSettings();
 
+		// Register the CM6 extension
+		this.registerEditorExtension(highlightExtension);
 
 		this.registerView(
 			VIEW_TYPE_TAGGING,
@@ -42,6 +45,16 @@ export default class LLMLinkerPlugin extends Plugin {
 				editor.replaceSelection('Sample Editor Command');
 			}
 		});
+
+		// Add command to highlight potential links
+		this.addCommand({
+			id: 'highlight-potential-links',
+			name: 'Highlight potential links',
+			editorCallback: (editor: Editor, view: MarkdownView) => {
+				new Notice('Potential links highlighted');
+			}
+		});
+
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
 
@@ -87,22 +100,6 @@ export default class LLMLinkerPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 }
-
-//class SampleModal extends Modal {
-//	constructor(app: App) {
-//		super(app);
-//	}
-//
-//	onOpen() {
-//		const {contentEl} = this;
-//		contentEl.setText('Woah!');
-//	}
-//
-//	onClose() {
-//		const {contentEl} = this;
-//		contentEl.empty();
-//	}
-//}
 
 class SampleSettingTab extends PluginSettingTab {
 	plugin: LLMLinkerPlugin;

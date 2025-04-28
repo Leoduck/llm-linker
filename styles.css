@@ -8,6 +8,7 @@ If your plugin does not need CSS, delete this file.
 */
 
 .generate-tags-button {
+  cursor: pointer;
   display: block;
   margin: auto;
   margin-bottom: var(--size-4-6);
