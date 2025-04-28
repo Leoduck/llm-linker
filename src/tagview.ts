@@ -27,7 +27,6 @@ export class TagView extends ItemView {
   async onOpen() {
     const container = this.containerEl.children[1];
     container.empty();
-    container.createEl('h4', { text: 'Tagging suggestions' });
 
     this.activeFile = this.app.workspace.getActiveFile();
     this.renderView(container);
@@ -48,6 +47,8 @@ export class TagView extends ItemView {
   }
 
   async renderView(container: Element) {
+    container.createEl('h4', { text: 'Tagging suggestions' });
+    
     if (!this.activeFile) {
       container.createEl('p', { text: 'No active note is open.' });
       return;
