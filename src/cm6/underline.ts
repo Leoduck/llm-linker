@@ -55,12 +55,12 @@ class LinkWidget extends WidgetType {
 }
 
 export const underlineMark = Decoration.mark({
-  class: "cm-underline",
+  class: "link-potential",
   attributes: { title: "Click to convert to link" }
 });
 
 export const underlineTheme = EditorView.baseTheme({
-  ".cm-underline": { 
+  ".link-potential": { 
     textDecoration: "underline 3px lightblue", 
     cursor: "pointer",
     position: "relative"
@@ -77,7 +77,7 @@ export const underlineTheme = EditorView.baseTheme({
     zIndex: "100",
     display: "none"
   },
-  ".cm-underline:hover .cm-link-widget": {
+  ".link-potential:hover .cm-link-widget": {
     display: "block"
   },
   ".cm-link-button": {

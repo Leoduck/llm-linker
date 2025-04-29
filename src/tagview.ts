@@ -116,7 +116,7 @@ export class TagView extends ItemView {
       url: 'http://localhost:11434/api/generate',
       body: JSON.stringify({
         prompt: taggingPrompt(usedTags, existingTags, fileContent),
-        model: 'deepseek-r1',
+        model: 'gemma3:12b',
         stream: false,
       }),
     });

@@ -1,14 +1,30 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
 import { TagView, VIEW_TYPE_TAGGING } from './tagview';
-import { highlightExtension } from './highlight';
+import { createHighlightExtension } from './highlight';
+import { sectionHighlightExtension } from './cm6/sectionhighlighter';
 // Remember to rename these classes and interfaces!
 
 interface LLMLinkerPluginSettings {
 	mySetting: string;
+	linkCandidates: string[];
 }
 
 const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
-	mySetting: 'default'
+	mySetting: 'default',
+	linkCandidates: [
+		'Project',
+		'Task',
+		'Meeting',
+		'Document',
+		'Note',
+		'Person',
+		'Team',
+		'Goal',
+		'HCAI',
+		'Milestone',
+		'Deadline',
+		'serves'
+	]
 }
 
 export default class LLMLinkerPlugin extends Plugin {
@@ -18,8 +34,9 @@ export default class LLMLinkerPlugin extends Plugin {
 		// Load plugin settings
 		await this.loadSettings();
 
-		// Register the CM6 extension
-		this.registerEditorExtension(highlightExtension);
+		// Register the CM6 extensions
+		this.registerEditorExtension(createHighlightExtension(this));
+		//this.registerEditorExtension(sectionHighlightExtension);
 
 		this.registerView(
 			VIEW_TYPE_TAGGING,
@@ -41,7 +58,6 @@ export default class LLMLinkerPlugin extends Plugin {
 			id: 'generate-tags',
 			name: 'Generate Tags for current note',
 			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
 				editor.replaceSelection('Sample Editor Command');
 			}
 		});
@@ -54,6 +70,19 @@ export default class LLMLinkerPlugin extends Plugin {
 				new Notice('Potential links highlighted');
 			}
 		});
+
+		// Add command to highlight a section
+		//this.addCommand({
+		//	id: 'highlight-section',
+		//	name: 'Highlight current section',
+		//	editorCallback: (editor: Editor, view: MarkdownView) => {
+		//		const cursor = editor.getCursor();
+		//		const line = editor.getLine(cursor.line);
+		//		
+		//		// Just notify that highlighting is active
+		//		new Notice('Sections between "Examples include" and "people effectively" will be highlighted');
+		//	}
+		//});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SampleSettingTab(this.app, this));
@@ -122,6 +151,17 @@ class SampleSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.mySetting)
 				.onChange(async (value) => {
 					this.plugin.settings.mySetting = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Link Candidates')
+			.setDesc('Words that should be highlighted as potential links (one per line), names of notes are automatically added')
+			.addTextArea(text => text
+				.setPlaceholder('Enter words to highlight')
+				.setValue(this.plugin.settings.linkCandidates.join('\n'))
+				.onChange(async (value) => {
+					this.plugin.settings.linkCandidates = value.split('\n').filter(word => word.trim() !== '');
 					await this.plugin.saveSettings();
 				}));
 	}
