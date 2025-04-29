@@ -1,5 +1,6 @@
 import { ItemView, WorkspaceLeaf, Notice, requestUrl, parseFrontMatterTags, Vault, getAllTags, TFile} from 'obsidian';
 import { taggingPrompt } from 'prompts/tagging';
+import LLMLinkerPlugin from './main';
 
 export const VIEW_TYPE_TAGGING = 'tag-view';
 
@@ -11,9 +12,11 @@ interface TagSuggestions {
 export class TagView extends ItemView {
   private activeFile: any;
   private onFileChangeHandler: () => void;
+  private plugin: LLMLinkerPlugin;
 
-  constructor(leaf: WorkspaceLeaf) {
+  constructor(leaf: WorkspaceLeaf, plugin: LLMLinkerPlugin) {
     super(leaf);
+    this.plugin = plugin;
   }
 
   getViewType() {
@@ -113,12 +116,15 @@ export class TagView extends ItemView {
     }
     const response = await requestUrl({
       method: 'POST',
-      url: 'http://localhost:11434/api/generate',
+      url: this.plugin.settings.llmEndpoint,
       body: JSON.stringify({
         prompt: taggingPrompt(usedTags, existingTags, fileContent),
-        model: 'gemma3:12b',
+        model: this.plugin.settings.llmModel,
         stream: false,
       }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
 
     const data = JSON.parse(response.text);

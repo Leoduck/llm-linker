@@ -7,24 +7,21 @@ import { sectionHighlightExtension } from './cm6/sectionhighlighter';
 interface LLMLinkerPluginSettings {
 	mySetting: string;
 	linkCandidates: string[];
+	llmEndpoint: string;
+	llmModel: string;
 }
 
 const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
 	mySetting: 'default',
 	linkCandidates: [
 		'Project',
-		'Task',
-		'Meeting',
-		'Document',
-		'Note',
-		'Person',
-		'Team',
-		'Goal',
 		'HCAI',
 		'Milestone',
 		'Deadline',
 		'serves'
-	]
+	],
+	llmEndpoint: 'https://api.openai.com/v1/chat/completions',
+	llmModel: 'gpt-3.5-turbo'
 }
 
 export default class LLMLinkerPlugin extends Plugin {
@@ -40,7 +37,7 @@ export default class LLMLinkerPlugin extends Plugin {
 
 		this.registerView(
 			VIEW_TYPE_TAGGING,
-			(leaf) => new TagView(leaf)
+			(leaf) => new TagView(leaf, this)
 		);
 
 		// This creates an icon in the left ribbon.
@@ -162,6 +159,28 @@ class SampleSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.linkCandidates.join('\n'))
 				.onChange(async (value) => {
 					this.plugin.settings.linkCandidates = value.split('\n').filter(word => word.trim() !== '');
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('LLM Endpoint')
+			.setDesc('The API endpoint for the LLM service')
+			.addText(text => text
+				.setPlaceholder('Enter LLM endpoint URL')
+				.setValue(this.plugin.settings.llmEndpoint)
+				.onChange(async (value) => {
+					this.plugin.settings.llmEndpoint = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('LLM Model')
+			.setDesc('The model to use for LLM completions')
+			.addText(text => text
+				.setPlaceholder('Enter model name')
+				.setValue(this.plugin.settings.llmModel)
+				.onChange(async (value) => {
+					this.plugin.settings.llmModel = value;
 					await this.plugin.saveSettings();
 				}));
 	}
