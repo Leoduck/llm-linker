@@ -1,4 +1,4 @@
-export const linkSuggestionPrompt = (existingLinks: Set<string>, noteContent: string): string => `
+export const linkSuggestionPrompt = (noteContent: string): string => `
 You are an AI assistant designed to suggest potential links for an Obsidian note. 
 Analyze the content of the provided note and identify words or phrases that could be meaningful links to other notes.
 
@@ -11,7 +11,7 @@ Analyze the content of the provided note and identify words or phrases that coul
 - Each suggestion should be a potential note title that could contain relevant information
 
 **Input:**  
-First, a list of words that are already linked in the note, followed by the content of the note.
+The content of the note with links and all.
 
 **Output:**  
 A valid JSON object with an array of suggested link words/phrases (e.g., {"suggestions": ["markdown", "documentation", "static site generator"]}).
@@ -26,8 +26,6 @@ It is widely used for documentation, notes, and static site generators."
 **Example output:**  
 {"suggestions": ["lightweight markup", "plain-text editor", "formatted text", "static site"]}
 
-**Existing Links:**  
-${Array.from(existingLinks).join(', ')}
 
 **Note Content:**  
 ${noteContent}

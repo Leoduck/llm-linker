@@ -1,18 +1,16 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
 import { TagView, VIEW_TYPE_TAGGING } from './tagview';
-import { createHighlightExtension } from './highlight';
+import { createHighlightExtension, updateLinkSuggestions} from './highlight';
 import { sectionHighlightExtension } from './cm6/sectionhighlighter';
 // Remember to rename these classes and interfaces!
 
 interface LLMLinkerPluginSettings {
-	mySetting: string;
 	linkCandidates: string[];
 	llmEndpoint: string;
 	llmModel: string;
 }
 
 const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
-	mySetting: 'default',
 	linkCandidates: [
 		'Project',
 		'HCAI',
@@ -59,15 +57,6 @@ export default class LLMLinkerPlugin extends Plugin {
 			}
 		});
 
-		// Add command to highlight potential links
-		this.addCommand({
-			id: 'highlight-potential-links',
-			name: 'Highlight potential links',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				new Notice('Potential links highlighted');
-			}
-		});
-
 		// Add command to highlight a section
 		//this.addCommand({
 		//	id: 'highlight-section',
@@ -92,6 +81,25 @@ export default class LLMLinkerPlugin extends Plugin {
 
 		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
 		// this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+
+		// Add command to update link suggestions
+		this.addCommand({
+			id: 'update-link-suggestions',
+			name: 'Update Link Suggestions',
+			callback: async () => {
+				const newLinks = await updateLinkSuggestions(this);
+				// save the new links to the setting
+				console.log('New links:', newLinks);
+				console.log('Current links:', this.settings.linkCandidates);
+				if (newLinks.length === 0) {
+					new Notice('No new links found');
+					return;
+				}
+				this.settings.linkCandidates = newLinks;
+				await this.saveSettings();
+				new Notice('Link suggestions updated');
+			}
+		});
 	}
 
 	onunload() {
@@ -141,17 +149,6 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-
-		new Setting(containerEl)
 			.setName('Link Candidates')
 			.setDesc('Words that should be highlighted as potential links (one per line), names of notes are automatically added')
 			.addTextArea(text => text
@@ -161,7 +158,6 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.settings.linkCandidates = value.split('\n').filter(word => word.trim() !== '');
 					await this.plugin.saveSettings();
 				}));
-
 		new Setting(containerEl)
 			.setName('LLM Endpoint')
 			.setDesc('The API endpoint for the LLM service')

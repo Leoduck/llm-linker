@@ -1,8 +1,11 @@
-import { Editor, MarkdownView } from 'obsidian';
+import { Editor, MarkdownView, requestUrl, Notice } from 'obsidian';
 import { EditorView, Decoration, DecorationSet, ViewPlugin, ViewUpdate } from '@codemirror/view';
 import { RangeSetBuilder } from '@codemirror/state';
 import { convertToLink, underlineMark, underlineTheme } from './cm6/underline';
 import LLMLinkerPlugin from './main';
+import { linkSuggestionPrompt } from 'prompts/linkHighlight';
+
+
 
 // Create a regex pattern from the list of words
 function createLinkPattern(linkCandidates: string[]): RegExp {
@@ -95,3 +98,46 @@ export const createHighlightExtension = (plugin: LLMLinkerPlugin) => [
         }
     )
 ];
+
+async function askLLMForLinkSuggestions(plugin: LLMLinkerPlugin, noteContent: string): Promise<string[]> {
+    console.log(linkSuggestionPrompt(noteContent));
+    const response = await requestUrl({
+      method: 'POST',
+      url: plugin.settings.llmEndpoint,
+      body: JSON.stringify({
+        prompt: linkSuggestionPrompt(noteContent),
+        model: plugin.settings.llmModel,
+        stream: false,
+      }),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    const data = JSON.parse(response.text);
+    console.log('LLM response:', data);
+    const responseText = data.response;
+    const jsonMatch = responseText.match(/\{([\s\S]*?)\}/);
+    console.log('LLM response text:', JSON.parse(jsonMatch[0]).suggestions);
+    return JSON.parse(jsonMatch[0]).suggestions;
+}
+
+export async function updateLinkSuggestions(plugin: LLMLinkerPlugin): Promise<string[]> {
+    const activeFile = plugin.app.workspace.getActiveFile();
+    if (!activeFile) {
+        new Notice('No active file found.');
+        return [];
+    }
+    const filecontent = await plugin.app.vault.read(activeFile);
+    console.log('File content:', filecontent);
+    let additionalLinks: string[] = [];
+    additionalLinks = await askLLMForLinkSuggestions(plugin, filecontent);
+    if (!additionalLinks) {
+        console.error('No additional links found.');
+        return [];
+    }
+    const existingLinks = plugin.settings.linkCandidates || [];
+    // Merge existing link candidates with additional links, avoiding duplicates
+    const updatedLinks = existingLinks.concat(additionalLinks);
+
+    return updatedLinks
+}
