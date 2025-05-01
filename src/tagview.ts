@@ -260,30 +260,30 @@ export class TagView extends ItemView {
     
     private async requestLinkSuggestions(fileContent: string): Promise<LinkSuggestion[]> {
       // dummy for testint
-      const responseText = `Here is the JSON response:\n\`\`\`json\n{
-          "suggestions": [ { "title": "The Role of Values in AI Design", "kickstarter": "How do we concretely translate values like fairness, inclusivity, and privacy into actionable design principles for AI systems? Let's examine frameworks and methodologies for embedding ethical considerations throughout the AI development lifecycle.", "connection": "This expands on the 'Ethics' point within HCAI, diving deeper into the practical challenges of aligning AI with human values." },
-              {
-              "title": "Human-AI Collaboration Models",
-              "kickstarter": "Beyond simply 'staying in the loop,' what are the most effective models for human-AI collaboration in different domains? Let’s explore different interaction paradigms and their impact on user experience and AI performance.",
-              "connection": "This builds upon the emphasis on 'control' and collaboration in HCAI, suggesting specific models for achieving those goals."
-              }
-          ]
-          }\n\`\`\`\nAdditional notes: This JSON provides suggestions for HCAI topics.`;
-      //const response = await requestUrl({
-      //  method: 'POST',
-      //  url: this.plugin.settings.llmEndpoint,
-      //  body: JSON.stringify({
-      //    prompt: linksuggestPrompt(fileContent),
-      //    model: this.plugin.settings.llmModel,
-      //    stream: false,
-      //  }),
-      //  headers: {
-      //    'Content-Type': 'application/json'
-      //  }
-      //});
-      //console.log('LLM response:', response.text);
-      //const data = JSON.parse(response.text);
-      //const responseText = data.response;
+      //const responseText = `Here is the JSON response:\n\`\`\`json\n{
+        //  "suggestions": [ { "title": "The Role of Values in AI Design", "kickstarter": "How do we concretely translate values like fairness, inclusivity, and privacy into actionable design principles for AI systems? Let's examine frameworks and methodologies for embedding ethical considerations throughout the AI development lifecycle.", "connection": "This expands on the 'Ethics' point within HCAI, diving deeper into the practical challenges of aligning AI with human values." },
+          //    {
+            //  "title": "Human-AI Collaboration Models",
+              //"kickstarter": "Beyond simply 'staying in the loop,' what are the most effective models for human-AI collaboration in different domains? Let’s explore different interaction paradigms and their impact on user experience and AI performance.",
+              //"connection": "This builds upon the emphasis on 'control' and collaboration in HCAI, suggesting specific models for achieving those goals."
+              //}
+          //]
+          //}\n\`\`\`\nAdditional notes: This JSON provides suggestions for HCAI topics.`;
+      const response = await requestUrl({
+        method: 'POST',
+        url: this.plugin.settings.llmEndpoint,
+         body: JSON.stringify({
+          prompt: linksuggestPrompt(fileContent),
+          model: this.plugin.settings.llmModel,
+          stream: false,
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('LLM response:', response.text);
+      const data = JSON.parse(response.text);
+      const responseText = data.response;
       const jsonMatch = responseText.match(/\{([\s\S]*)\}/);
       if (!jsonMatch) {
         throw new Error('Could not parse suggestions from LLM response');

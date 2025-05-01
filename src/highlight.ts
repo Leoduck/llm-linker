@@ -17,6 +17,7 @@ function createLinkDecorations(content: string, getOffset: (lineIndex: number, c
     const lines = content.split('\n');
     const builder = new RangeSetBuilder<Decoration>();
     const pattern = createLinkPattern(linkCandidates);
+    console.log('Link candidates:', linkCandidates);
     
     lines.forEach((line, lineIndex) => {
         let match;
@@ -52,7 +53,7 @@ export class LinkHighlighter {
         this.decorations = createLinkDecorations(
             content,
             (lineIndex, charIndex) => this.editor.posToOffset({ line: lineIndex, ch: charIndex }),
-            this.plugin.settings.linkCandidates
+            this.plugin.settings.linkCandidates.concat(getAllNoteNames(this.plugin))
         );
     }
 
@@ -140,4 +141,12 @@ export async function updateLinkSuggestions(plugin: LLMLinkerPlugin): Promise<st
     const updatedLinks = existingLinks.concat(additionalLinks);
 
     return updatedLinks
+}
+
+/**
+ * Get all note names (without extension) in the Obsidian vault.
+ */
+export function getAllNoteNames(plugin: LLMLinkerPlugin): string[] {
+    const files = plugin.app.vault.getMarkdownFiles();
+    return files.map(file => file.basename);
 }
