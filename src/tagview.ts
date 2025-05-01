@@ -1,5 +1,6 @@
 import { ItemView, WorkspaceLeaf, Notice, requestUrl, parseFrontMatterTags, Vault, getAllTags, TFile} from 'obsidian';
 import { taggingPrompt } from 'prompts/tagging';
+import { linksuggestPrompt } from 'prompts/linksuggest';
 import LLMLinkerPlugin from './main';
 
 export const VIEW_TYPE_TAGGING = 'tag-view';
