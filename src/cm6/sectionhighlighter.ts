@@ -6,14 +6,9 @@ const sectionHighlightMark = Decoration.mark({
     class: 'section-highlight',
     attributes: { 
         style: `
-            background-color: rgba(255, 255, 0, 0.1);
-            border-left: 3px solid rgba(255, 200, 0, 0.5);
-            margin-left: -3px;
-            padding-left: 3px;
-            border-radius: 0 2px 2px 0;
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
+            border-radius: 4px; /* Rounded corners */
+            padding: 2px; /* Padding inside the box */
+            background-color: rgba(255, 255, 0, 0.1); /* Light yellow background */
         `
     }
 });
@@ -23,31 +18,26 @@ function createSectionDecorations(content: string, getOffset: (lineIndex: number
     const lines = content.split('\n');
     const builder = new RangeSetBuilder<Decoration>();
     
-    const startMarker = 'Examples include';
-    const endMarker = 'people effectively';
+    const startMarker = '**Hufflepuff** was one';
+    const endMarker = 'in its members';
     
     let isHighlighting = false;
     let startPos = 0;
-    
+
     lines.forEach((line, lineIndex) => {
         if (line.includes(startMarker)) {
             isHighlighting = true;
             // Start highlighting from the beginning of this line
             startPos = getOffset(lineIndex, 0);
-        } else if (line.includes(endMarker)) {
-            if (isHighlighting) {
-                // End highlighting at the end of this line
-                const endPos = getOffset(lineIndex, line.length);
-                if (endPos > startPos) {  // Only add if we have content to highlight
-                    builder.add(startPos, endPos, sectionHighlightMark);
-                }
-                isHighlighting = false;
+        }
+
+        if (line.includes(endMarker) && isHighlighting) {
+            // End highlighting at the end of this line
+            const endPos = getOffset(lineIndex, line.length);
+            if (endPos > startPos) {  // Only add if we have content to highlight
+                builder.add(startPos, endPos, sectionHighlightMark);
             }
-        } else if (isHighlighting) {
-            // If we're in a section, highlight the entire line
-            const from = getOffset(lineIndex, 0);
-            const to = getOffset(lineIndex, line.length);
-            builder.add(from, to, sectionHighlightMark);
+            isHighlighting = false;
         }
     });
     

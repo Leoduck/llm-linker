@@ -31,7 +31,7 @@ export default class LLMLinkerPlugin extends Plugin {
 
 		// Register the CM6 extensions
 		this.registerEditorExtension(createHighlightExtension(this));
-		//this.registerEditorExtension(sectionHighlightExtension);
+		this.registerEditorExtension(sectionHighlightExtension);
 
 		this.registerView(
 			VIEW_TYPE_TAGGING,
