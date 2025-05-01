@@ -16,7 +16,6 @@ If your plugin does not need CSS, delete this file.
 
 .links-container {
   height: 45vh;
-  resize: vertical;
   overflow-y: scroll;
 }
 

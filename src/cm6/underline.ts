@@ -1,6 +1,7 @@
 import {EditorView, Decoration, DecorationSet, WidgetType} from "@codemirror/view"
 import {StateField, StateEffect} from "@codemirror/state"
 
+
 const addUnderline = StateEffect.define<{from: number, to: number}>({
   map: ({from, to}, change) => ({from: change.mapPos(from), to: change.mapPos(to)})
 })
@@ -93,19 +94,6 @@ export const underlineTheme = EditorView.baseTheme({
     background: "var(--interactive-accent-hover)"
   }
 });
-
-export function underlineSelection(view: EditorView) {
-  let effects: StateEffect<unknown>[] = view.state.selection.ranges
-    .filter(r => !r.empty)
-    .map(({from, to}) => addUnderline.of({from, to}))
-  if (!effects.length) return false
-
-  if (!view.state.field(underlineField, false))
-    effects.push(StateEffect.appendConfig.of([underlineField,
-                                              underlineTheme]))
-  view.dispatch({effects})
-  return true
-}
 
 export function convertToLink(view: EditorView, from: number, to: number) {
   const text = view.state.sliceDoc(from, to);

@@ -1,6 +1,5 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
 import { TagView, VIEW_TYPE_TAGGING } from './tagview';
-import { LinkView, VIEW_TYPE_LINKING} from './linkview';
 import { createHighlightExtension, updateLinkSuggestions} from './highlight';
 import { sectionHighlightExtension } from './cm6/sectionhighlighter';
 // Remember to rename these classes and interfaces!
@@ -9,6 +8,7 @@ interface LLMLinkerPluginSettings {
 	linkCandidates: string[];
 	llmEndpoint: string;
 	llmModel: string;
+	autoLink: boolean;
 }
 
 const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
@@ -18,7 +18,8 @@ const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
 		'Link phrase of words',
 	],
 	llmEndpoint: 'http://localhost:11434/api/generate',
-	llmModel: 'gemma3:12b'
+	llmModel: 'gemma3:12b',
+	autoLink: false
 }
 
 export default class LLMLinkerPlugin extends Plugin {
@@ -168,6 +169,19 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.settings.llmModel = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Highlight conversion')
+			.setDesc('Convert highlighted text to links automatically')
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.autoLink)
+					.onChange(async (value) => {
+						this.plugin.settings.autoLink = value;
+						await this.plugin.saveSettings();
+					});
+			}
+		);
+			
 		new Setting(containerEl)
 			.setName('Link Candidates')
 			.setDesc('Words that should be highlighted as potential links (one per line), names of notes are automatically added')

@@ -226,7 +226,7 @@ export class TagView extends ItemView {
     }
   
     async renderViewLink(container: Element) {
-      container.createEl('h4', { text: 'Link suggestions' });
+      container.createEl('h4', { text: 'Links for expanding topic' });
   
       if (!this.activeFile) {
         container.createEl('p', { text: 'No active note is open.' });
@@ -307,7 +307,7 @@ export class TagView extends ItemView {
         suggestionEl.createEl('small', { text: `Connection: ${suggestion.connection}` });
   
         suggestionEl.addEventListener('click', async () => {
-          const linkText = `[[${suggestion.title}]]`;
+          const linkText = `- [[${suggestion.title}]]`;
           const newNotePath = `${suggestion.title}.md`;
   
           const fileContent = await this.app.vault.read(this.activeFile);
@@ -322,6 +322,7 @@ export class TagView extends ItemView {
           } else {
             new Notice(`Note already exists: ${newNotePath}`);
           }
+          suggestionEl.remove();
         });
       });
     }
