@@ -1,5 +1,6 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
 import { TagView, VIEW_TYPE_TAGGING } from './tagview';
+import { LinkView, VIEW_TYPE_LINKING} from './linkview';
 import { createHighlightExtension, updateLinkSuggestions} from './highlight';
 import { sectionHighlightExtension } from './cm6/sectionhighlighter';
 // Remember to rename these classes and interfaces!
@@ -12,14 +13,12 @@ interface LLMLinkerPluginSettings {
 
 const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
 	linkCandidates: [
-		'Project',
-		'HCAI',
-		'Milestone',
-		'Deadline',
-		'serves'
+		'Link1',
+		'Link2',
+		'Link phrase of words',
 	],
-	llmEndpoint: 'https://api.openai.com/v1/chat/completions',
-	llmModel: 'gpt-3.5-turbo'
+	llmEndpoint: 'http://localhost:11434/api/generate',
+	llmModel: 'gemma3:12b'
 }
 
 export default class LLMLinkerPlugin extends Plugin {
@@ -41,7 +40,6 @@ export default class LLMLinkerPlugin extends Plugin {
 		// This creates an icon in the left ribbon.
 		const ribbonIconEl = this.addRibbonIcon('tags', 'open tagging window', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
-			new Notice('tag');
 			this.activateView();
 		});
 
@@ -49,13 +47,13 @@ export default class LLMLinkerPlugin extends Plugin {
 		ribbonIconEl.addClass('my-plugin-ribbon-class');
 
 		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'generate-tags',
-			name: 'Generate Tags for current note',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
+		//this.addCommand({
+		//	id: 'generate-tags',
+		//	name: 'Generate Tags for current note',
+		//	editorCallback: (editor: Editor, view: MarkdownView) => {
+		//		editor.replaceSelection('Sample Editor Command');
+		//	}
+		//});
 
 		// Add command to highlight a section
 		//this.addCommand({
@@ -148,16 +146,7 @@ class SampleSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl)
-			.setName('Link Candidates')
-			.setDesc('Words that should be highlighted as potential links (one per line), names of notes are automatically added')
-			.addTextArea(text => text
-				.setPlaceholder('Enter words to highlight')
-				.setValue(this.plugin.settings.linkCandidates.join('\n'))
-				.onChange(async (value) => {
-					this.plugin.settings.linkCandidates = value.split('\n').filter(word => word.trim() !== '');
-					await this.plugin.saveSettings();
-				}));
+
 		new Setting(containerEl)
 			.setName('LLM Endpoint')
 			.setDesc('The API endpoint for the LLM service')
@@ -179,5 +168,17 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.settings.llmModel = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Link Candidates')
+			.setDesc('Words that should be highlighted as potential links (one per line), names of notes are automatically added')
+			.addTextArea((text) => {
+				text.inputEl.rows = 8;
+				text
+				.setPlaceholder('Enter words to highlight')
+				.setValue(this.plugin.settings.linkCandidates.join('\n'))
+				.onChange(async (value) => {
+					this.plugin.settings.linkCandidates = value.split('\n').filter(word => word.trim() !== '');
+					await this.plugin.saveSettings();
+				})});
 	}
 }

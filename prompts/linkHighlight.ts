@@ -9,6 +9,7 @@ Analyze the content of the provided note and identify words or phrases that coul
 - Ensure suggestions are relevant to the note's content
 - Exclude common words, pronouns, and articles
 - Each suggestion should be a potential note title that could contain relevant information
+- Try to limit suggestions to 3-4 words/phrases
 
 **Input:**  
 The content of the note with links and all.
