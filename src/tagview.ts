@@ -71,7 +71,7 @@ export class TagView extends ItemView {
 
     const usedTags = this.getAllVaultTags();
     const contentEl = container.createEl('div', { cls: 'note-content' });
-    const llmButton = this.createLLMButton(contentEl, usedTags);
+    this.createLLMButton(contentEl, usedTags);
   }
 
   private getAllVaultTags(): Set<string> {
@@ -173,7 +173,7 @@ export class TagView extends ItemView {
     const section = container.createEl('div', { cls: `tag-suggestion-section ${tagClass}` });
     const sectionHeader = section.createEl('div', { cls: 'tag-suggestion-section-header' });
     sectionHeader.createEl('div', { cls: 'tag-suggestion-section-title', text: title });
-    const removeButton = this.createRemoveButton(sectionHeader, section);
+    this.createRemoveButton(sectionHeader, section);
     
     const tagsList = section.createEl('div', { cls: 'multi-select-container' });
     
@@ -235,7 +235,7 @@ export class TagView extends ItemView {
       }
   
       const contentEl = container.createEl('div', { cls: 'note-content' });
-      const llmButton = this.createLLMButtonLink(contentEl);
+      this.createLLMButtonLink(contentEl);
     }
   
     private createLLMButtonLink(container: Element): HTMLElement {

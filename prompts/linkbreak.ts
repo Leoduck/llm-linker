@@ -7,13 +7,14 @@ Analyze the provided note content and identify sections that:
 3. Contain a complete thought or concept that might be referenced elsewhere
 
 For each potential section you identify, provide:
-- The exact text of the section
+- The exact start and end of the section in the note content
 - A suggested title for the new note
 - A clear explanation of why this section should be split into its own note
 
 **Output Format:**
 Provide a JSON object with an array of suggestions. Each suggestion should have:
-- "section": The exact text of the section
+- "section_start": The first few words of the section
+- "section_end": The last few words of the section
 - "title": A suggested title for the new note
 - "reason": A clear explanation of why this section should be split
 
@@ -21,7 +22,8 @@ Example output format:
 {
   "suggestions": [
     {
-      "section": "The exact text of the section...",
+      "section_start": "This section discusses the importance of...",
+      "section_end": "and how it can be applied in various contexts.",
       "title": "Suggested Note Title",
       "reason": "This section contains a complete concept that could be referenced from multiple notes..."
     }
