@@ -5,34 +5,31 @@ import { convertToLink, underlineMark, underlineTheme } from './cm6/underline';
 import LLMLinkerPlugin from './main';
 import { linkSuggestionPrompt } from 'prompts/linkHighlight';
 
-
-
 // Create a regex pattern from the list of words
 function createLinkPattern(linkCandidates: string[]): RegExp {
+    if (linkCandidates.length === 0) linkCandidates.push('droggeljug');
     return new RegExp(`\\b(${linkCandidates.join('|')})\\b(?![^\\[]*\\])`, 'gi');
 }
 
 // Shared function to create decorations for potential links
-function createLinkDecorations(content: string, getOffset: (lineIndex: number, charIndex: number) => number, linkCandidates: string[]): DecorationSet {
+function createLinkDecorations(
+    content: string,
+    getOffset: (lineIndex: number, charIndex: number) => number,
+    linkCandidates: string[]
+): DecorationSet {
     const lines = content.split('\n');
     const builder = new RangeSetBuilder<Decoration>();
     const pattern = createLinkPattern(linkCandidates);
-    console.log('Link candidates:', linkCandidates);
-    
+
     lines.forEach((line, lineIndex) => {
         let match;
         while ((match = pattern.exec(line)) !== null) {
-            // Check if the match is not part of a link
-            const beforeMatch = line.slice(0, match.index);
-            const afterMatch = line.slice(match.index + match[0].length);
-            
-            const [fullMatch] = match;
             const from = getOffset(lineIndex, match.index);
-            const to = from + fullMatch.length;
+            const to = from + match[0].length;
             builder.add(from, to, underlineMark);
         }
     });
-    
+
     return builder.finish();
 }
 
@@ -50,10 +47,13 @@ export class LinkHighlighter {
 
     public highlightPotentialLinks(): void {
         const content = this.editor.getValue();
+        const linkCandidates = this.plugin.settings.linkExisting
+            ? this.plugin.settings.linkCandidates.concat(getAllNoteNames(this.plugin))
+            : this.plugin.settings.linkCandidates;
         this.decorations = createLinkDecorations(
             content,
             (lineIndex, charIndex) => this.editor.posToOffset({ line: lineIndex, ch: charIndex }),
-            this.plugin.settings.linkCandidates.concat(getAllNoteNames(this.plugin))
+            linkCandidates
         );
     }
 
@@ -71,8 +71,6 @@ export const createHighlightExtension = (plugin: LLMLinkerPlugin) => [
 
             constructor(view: EditorView) {
                 this.decorations = Decoration.none;
-                
-                // Add click handler for underlined text
                 view.dom.addEventListener('click', (e) => {
                     const target = e.target as HTMLElement;
                     if (target.classList.contains('link-potential')) {
@@ -84,12 +82,19 @@ export const createHighlightExtension = (plugin: LLMLinkerPlugin) => [
             }
 
             update(update: ViewUpdate) {
+                if (plugin.settings.clearHighlights) {
+                    this.decorations = Decoration.none;
+                    return;
+                }
                 if (update.docChanged || update.viewportChanged) {
+                    const linkCandidates = plugin.settings.linkExisting
+                        ? plugin.settings.linkCandidates.concat(getAllNoteNames(plugin))
+                        : plugin.settings.linkCandidates;
                     const content = update.state.doc.toString();
                     this.decorations = createLinkDecorations(
                         content,
                         (lineIndex, charIndex) => update.view.state.doc.line(lineIndex + 1).from + charIndex,
-                        plugin.settings.linkCandidates
+                        linkCandidates
                     );
                 }
             }
@@ -101,24 +106,22 @@ export const createHighlightExtension = (plugin: LLMLinkerPlugin) => [
 ];
 
 async function askLLMForLinkSuggestions(plugin: LLMLinkerPlugin, noteContent: string): Promise<string[]> {
-    console.log(linkSuggestionPrompt(noteContent));
     const response = await requestUrl({
-      method: 'POST',
-      url: plugin.settings.llmEndpoint,
-      body: JSON.stringify({
-        prompt: linkSuggestionPrompt(noteContent),
-        model: plugin.settings.llmModel,
-        stream: false,
-      }),
-      headers: {
-        'Content-Type': 'application/json'
-      }
+        method: 'POST',
+        url: plugin.settings.llmEndpoint,
+        body: JSON.stringify({
+            prompt: linkSuggestionPrompt(noteContent),
+            model: plugin.settings.llmModel,
+            stream: false,
+        }),
+        headers: {
+            'Content-Type': 'application/json'
+        }
     });
     const data = JSON.parse(response.text);
-    console.log('LLM response:', data);
     const responseText = data.response;
     const jsonMatch = responseText.match(/\{([\s\S]*?)\}/);
-    console.log('LLM response text:', JSON.parse(jsonMatch[0]).suggestions);
+    if (!jsonMatch) return [];
     return JSON.parse(jsonMatch[0]).suggestions;
 }
 
@@ -129,24 +132,19 @@ export async function updateLinkSuggestions(plugin: LLMLinkerPlugin): Promise<st
         return [];
     }
     const filecontent = await plugin.app.vault.read(activeFile);
-    console.log('File content:', filecontent);
-    let additionalLinks: string[] = [];
-    additionalLinks = await askLLMForLinkSuggestions(plugin, filecontent);
+    const additionalLinks = await askLLMForLinkSuggestions(plugin, filecontent);
     if (!additionalLinks) {
         console.error('No additional links found.');
         return [];
     }
     const existingLinks = plugin.settings.linkCandidates || [];
     // Merge existing link candidates with additional links, avoiding duplicates
-    const updatedLinks = existingLinks.concat(additionalLinks);
-
-    return updatedLinks
+    return existingLinks.concat(additionalLinks);
 }
 
 /**
  * Get all note names (without extension) in the Obsidian vault.
  */
 export function getAllNoteNames(plugin: LLMLinkerPlugin): string[] {
-    const files = plugin.app.vault.getMarkdownFiles();
-    return files.map(file => file.basename);
+    return plugin.app.vault.getMarkdownFiles().map(file => file.basename);
 }

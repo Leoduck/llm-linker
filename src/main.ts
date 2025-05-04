@@ -9,6 +9,8 @@ interface LLMLinkerPluginSettings {
 	llmEndpoint: string;
 	llmModel: string;
 	autoLink: boolean;
+	linkExisting: boolean;
+	clearHighlights: boolean; // Add this line
 }
 
 const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
@@ -19,7 +21,9 @@ const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
 	],
 	llmEndpoint: 'http://localhost:11434/api/generate',
 	llmModel: 'gemma3:12b',
-	autoLink: false
+	autoLink: false,
+	linkExisting: true,
+	clearHighlights: false // Add this line
 }
 
 export default class LLMLinkerPlugin extends Plugin {
@@ -97,6 +101,13 @@ export default class LLMLinkerPlugin extends Plugin {
 				this.settings.linkCandidates = newLinks;
 				await this.saveSettings();
 				new Notice('Link suggestions updated');
+			}
+		});
+		this.addCommand({
+			id: 'get-all-note-titles',
+			name: 'All note titles',
+			callback: async () => {
+				console.log('All note titles:', this.app.vault.getMarkdownFiles().map(file => file.basename));
 			}
 		});
 	}
@@ -194,5 +205,29 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.settings.linkCandidates = value.split('\n').filter(word => word.trim() !== '');
 					await this.plugin.saveSettings();
 				})});
+		new Setting(containerEl)
+			.setName('Vault note links')
+			.setDesc('Highlight words that are the names of notes in the vault')
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.autoLink)
+					.onChange(async (value) => {
+						this.plugin.settings.autoLink = value;
+						await this.plugin.saveSettings();
+					});
+			}
+		);
+		new Setting(containerEl)
+			.setName('Clear Highlights')
+			.setDesc('Temporarily hide all link highlights in the editor')
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings.clearHighlights)
+					.onChange(async (value) => {
+						this.plugin.settings.clearHighlights = value;
+						await this.plugin.saveSettings();
+					});
+			}
+		);
 	}
 }
