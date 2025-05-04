@@ -17,7 +17,7 @@ interface LinkSuggestion {
 };
 
 export class TagView extends ItemView {
-  private activeFile: any;
+  private activeFile: TFile | null;
   private onFileChangeHandler: () => void;
   private onFileChangeHandlerLink: () => void;
   private plugin: LLMLinkerPlugin;
@@ -93,7 +93,7 @@ export class TagView extends ItemView {
   private async handleLLMRequest(container: Element, usedTags: Set<string>) {
     const spinner = this.createLoadingSpinner(container);
     const existingTags = this.getExistingTags();
-    const fileContent = await this.app.vault.read(this.activeFile);
+    const fileContent = await this.app.vault.read(this.activeFile!);
 
     try {
       const suggestions = await this.requestTagSuggestions(usedTags, existingTags, fileContent);
@@ -114,7 +114,7 @@ export class TagView extends ItemView {
 
   private getExistingTags(): string[] {
     return parseFrontMatterTags(
-      this.app.metadataCache.getFileCache(this.activeFile)?.frontmatter
+      this.app.metadataCache.getFileCache(this.activeFile!)?.frontmatter
     ) || [];
   }
 
@@ -197,7 +197,7 @@ export class TagView extends ItemView {
   }
 
   private handleTagClick(pill: Element, tag: string, container: Element, existingTags: string[]) {
-    this.app.fileManager.processFrontMatter(this.activeFile, (frontmatter) => {
+    this.app.fileManager.processFrontMatter(this.activeFile!, (frontmatter) => {
       if (!frontmatter.tags) {
         frontmatter.tags = [tag];
       } else if (!frontmatter.tags.includes(tag)) {
@@ -223,7 +223,7 @@ export class TagView extends ItemView {
         }
       };
   
-      this.app.workspace.on('active-leaf-change', this.onFileChangeHandler);
+      this.app.workspace.on('active-leaf-change', this.onFileChangeHandlerLink);
     }
   
     async renderViewLink(container: Element) {
@@ -246,7 +246,7 @@ export class TagView extends ItemView {
   
     private async handleLLMRequestLink(container: Element) {
       const spinner = this.createLoadingSpinner(container);
-      const fileContent = await this.app.vault.read(this.activeFile);
+      const fileContent = await this.app.vault.read(this.activeFile!);
   
       try {
         const suggestions = await this.requestLinkSuggestions(fileContent);
@@ -311,9 +311,9 @@ export class TagView extends ItemView {
           const linkText = `- [[${suggestion.title}]]`;
           const newNotePath = `${suggestion.title}.md`;
   
-          const fileContent = await this.app.vault.read(this.activeFile);
+          const fileContent = await this.app.vault.read(this.activeFile!);
           // Append the link to the current note
-          await this.app.vault.modify(this.activeFile, fileContent + '\n' + linkText);
+          await this.app.vault.modify(this.activeFile!, fileContent + '\n' + linkText);
           new Notice(`Added link: ${linkText}`);
   
           // Create a new note with the suggestion's kickstarter as content
@@ -332,6 +332,9 @@ export class TagView extends ItemView {
   async onClose() {
     if (this.onFileChangeHandler) {
       this.app.workspace.off('active-leaf-change', this.onFileChangeHandler);
+    }
+    if (this.onFileChangeHandlerLink) {
+      this.app.workspace.off('active-leaf-change', this.onFileChangeHandlerLink);
     }
   }
 }
