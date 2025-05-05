@@ -5,8 +5,10 @@ import { sectionHighlightExtension } from './cm6/sectionhighlighter';
 
 interface LLMLinkerPluginSettings {
 	linkCandidates: string[];
+	linkExclusions: string[];
 	llmEndpoint: string;
 	llmModel: string;
+	apiKey: string;
 	autoLink: boolean;
 	linkExisting: boolean;
 	clearHighlights: boolean;
@@ -16,6 +18,7 @@ const DEFAULT_SETTINGS: LLMLinkerPluginSettings = {
 	linkCandidates: ['Link1', 'Link2', 'Link phrase of words'],
 	llmEndpoint: 'http://localhost:11434/api/generate',
 	llmModel: 'gemma3:12b',
+	apiKey: '',
 	autoLink: false,
 	linkExisting: true,
 	clearHighlights: false
@@ -72,9 +75,9 @@ export default class LLMLinkerPlugin extends Plugin {
 					return;
 				}
 				const content = await this.app.vault.read(activeFile);
-				const { llmEndpoint, llmModel } = this.settings;
+				const { llmEndpoint, llmModel, apiKey } = this.settings;
 				const { getSectionBoundariesFromLLM } = await import('./sectionllm');
-				const boundaries = await getSectionBoundariesFromLLM(llmEndpoint, llmModel, content);
+				const boundaries = await getSectionBoundariesFromLLM(llmEndpoint, llmModel, apiKey, content);
 				console.log('Section boundaries from LLM:', boundaries);
 				new Notice(`Found ${boundaries.length} section${boundaries.length === 1 ? '' : 's'} (see console).`);
 			}
@@ -139,6 +142,16 @@ class SampleSettingTab extends PluginSettingTab {
 					this.plugin.settings.llmModel = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Api Key')
+			.setDesc('The API key for the LLM service')
+			.addText(text => text
+				.setPlaceholder('Enter API key')
+				.setValue(this.plugin.settings.apiKey)
+				.onChange(async (value) => {
+					this.plugin.settings.apiKey = value;
+					await this.plugin.saveSettings();
+				}));
 
 		new Setting(containerEl)
 			.setName('Highlight conversion')
@@ -188,6 +201,20 @@ class SampleSettingTab extends PluginSettingTab {
 						this.plugin.settings.clearHighlights = value;
 						await this.plugin.saveSettings();
 					});
+			});
+		new Setting(containerEl)
+			.setName('Exlude these notes from prompts')
+			.setDesc('Notes that should not be included in the LLM prompt')
+			.addTextArea(text => {
+				text.inputEl.rows = 8;
+				text
+					.setPlaceholder('Enter notes or directories to exclude')
+					.setValue(this.plugin.settings.linkExclusions.join('\n'))
+					.onChange(async (value) => {
+						this.plugin.settings.linkExclusions = value.split('\n').filter(word => word.trim() !== '');
+						await this.plugin.saveSettings();
+					}
+				);
 			});
 	}
 }

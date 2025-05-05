@@ -126,6 +126,22 @@ export class TagView extends ItemView {
         newTags: ['llm-integration', 'api-development', 'typescript', 'documentation']
       };
     }
+    if (this.plugin.settings.apiKey) {
+      const response = await requestUrl({
+        method: 'POST',
+        url: "https://api.openai.com/v1/chat/completions",
+        body: JSON.stringify({
+          messages: [{role: "user", content: taggingPrompt(usedTags, existingTags, fileContent)}],
+          model: "gpt-4o-mini"
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.plugin.settings.apiKey}`
+        }
+      });
+      const data = JSON.parse(response.text);
+      return JSON.parse(data.choices[0].message.content);
+    }
     const response = await requestUrl({
       method: 'POST',
       url: this.plugin.settings.llmEndpoint,
@@ -138,10 +154,8 @@ export class TagView extends ItemView {
         'Content-Type': 'application/json'
       }
     });
-
+  
     const data = JSON.parse(response.text);
-    // For development/testing, use mock data instead of actual LLM response
-    
     const responseText = data.response;
     const jsonMatch = responseText.match(/\{([\s\S]*?)\}/);
     
@@ -270,6 +284,22 @@ export class TagView extends ItemView {
               //}
           //]
           //}\n\`\`\`\nAdditional notes: This JSON provides suggestions for HCAI topics.`;
+        if (this.plugin.settings.apiKey) {
+          const response = await requestUrl({
+            method: 'POST',
+            url: "https://api.openai.com/v1/chat/completions",
+            body: JSON.stringify({
+              messages: [{role: "user", content: linksuggestPrompt(fileContent)}],
+              model: "gpt-4o-mini"
+            }),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.plugin.settings.apiKey}`
+            }
+          });
+          const data = JSON.parse(response.text);
+          return JSON.parse(data.choices[0].message.content.match(/\{([\s\S]*)\}/)[0]).suggestions;
+        }
       const response = await requestUrl({
         method: 'POST',
         url: this.plugin.settings.llmEndpoint,
@@ -303,11 +333,14 @@ export class TagView extends ItemView {
   
       suggestions.forEach(suggestion => {
         const suggestionEl = suggestionsEl.createEl('div', { cls: 'link-suggestion' });
-        suggestionEl.createEl('h5', { text: suggestion.title });
-        suggestionEl.createEl('p', { text: suggestion.kickstarter });
-        suggestionEl.createEl('small', { text: `Connection: ${suggestion.connection}` });
+        const suggestionHead = suggestionEl.createEl('div', { cls: 'link-suggestion-section-header' });
+        const suggestionBody = suggestionEl.createEl('div', { cls: 'link-suggestion-section-body', title: "Click to create note" });
+        suggestionHead.createEl('h5', { text: suggestion.title });
+        this.createRemoveButton(suggestionHead, suggestionEl);
+        suggestionBody.createEl('p', { text: suggestion.kickstarter });
+        suggestionBody.createEl('small', { text: `Connection: ${suggestion.connection}` });
   
-        suggestionEl.addEventListener('click', async () => {
+        suggestionBody.addEventListener('click', async () => {
           const linkText = `- [[${suggestion.title}]]`;
           const newNotePath = `${suggestion.title}.md`;
   

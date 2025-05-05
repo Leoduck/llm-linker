@@ -112,4 +112,14 @@ If your plugin does not need CSS, delete this file.
   margin-bottom: var(--size-4-5);
 }
 
+.link-suggestion-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+} 
 
+
+.link-suggestion-section-body {
+  cursor: pointer;
+} 

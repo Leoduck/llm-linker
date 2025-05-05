@@ -18,8 +18,25 @@ export interface SectionBoundary {
 export async function getSectionBoundariesFromLLM(
   llmEndpoint: string,
   llmModel: string,
+  apiKey: string,
   noteContent: string
 ): Promise<SectionBoundary[]> {
+  if (apiKey) {
+    const response = await requestUrl({
+      method: 'POST',
+      url: "https://api.openai.com/v1/chat/completions",
+      body: JSON.stringify({
+        messages: [{role: "user", content: linkbreakPrompt(noteContent)}],
+        model: "gpt-4o-mini"
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+    const data = JSON.parse(response.text);
+          return JSON.parse(data.choices[0].message.content.match(/\{([\s\S]*)\}/)[0]).suggestions;
+  }
   const response = await requestUrl({
     method: 'POST',
     url: llmEndpoint,

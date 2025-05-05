@@ -106,6 +106,22 @@ export const createHighlightExtension = (plugin: LLMLinkerPlugin) => [
 ];
 
 async function askLLMForLinkSuggestions(plugin: LLMLinkerPlugin, noteContent: string): Promise<string[]> {
+    if (plugin.settings.apiKey) {
+        const response = await requestUrl({
+          method: 'POST',
+          url: "https://api.openai.com/v1/chat/completions",
+          body: JSON.stringify({
+            messages: [{role: "user", content: linkSuggestionPrompt(noteContent)}],
+            model: "gpt-4o-mini"
+          }),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${plugin.settings.apiKey}`
+          }
+        });
+        const data = JSON.parse(response.text);
+              return JSON.parse(data.choices[0].message.content.match(/\{([\s\S]*)\}/)[0]).suggestions;
+      }
     const response = await requestUrl({
         method: 'POST',
         url: plugin.settings.llmEndpoint,
