@@ -5,10 +5,12 @@ import { RangeSetBuilder } from '@codemirror/state';
 const sectionHighlightLine = Decoration.line({
     attributes: {
         class: 'section-highlight',
+        title: "This section presents a clear, step-by-step process that users can reference when applying the Zettelkasten method. Splitting it into its own note allows for easy access and integration into other notes about practical applications of the method.",
         style: `
-            border-radius: 4px;
+            border-left: 2px solid rgba(255, 255, 0, 0.5);
             padding: 2px;
-            background-color: rgba(255, 255, 0, 0.1);
+            background-color: rgba(255, 166, 0, 0.1);
+            cursor: pointer;
         `
     }
 });
@@ -17,8 +19,8 @@ const sectionHighlightLine = Decoration.line({
 function createSectionDecorations(content: string, getOffset: (lineIndex: number, charIndex: number) => number): DecorationSet {
     const lines = content.split('\n');
     const builder = new RangeSetBuilder<Decoration>();
-    const startMarker = '**Hufflepuff** was one';
-    const endMarker = 'in its members';
+    const startMarker = "### Workflow";
+    const endMarker = "or create new connections as your understanding evolves.";
 
     let isHighlighting = false;
 
