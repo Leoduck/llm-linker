@@ -1,4 +1,4 @@
-# Obsidian Plugin for Linking and Taggin AssIstance
+# Obsidian Plugin for Linking and Tagging Assistance
 
 This plugin is designed to integrate different ways of utliziing GAI in creating links and tags for Obsidian notes. There are currently 4 different possibilites to get suggestions, two are located in a menu folder and suggest tags and possible new topics. The other two are in the document, one highlighting word/phrases that are notes in your vault and the other can be activated through the command pallet to breakdown a note into possible different notes.
 
